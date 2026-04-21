@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: black;
+      text-align: center;
+      background-color: white;
+      background-image:
+        radial-gradient(circle at 20px 20px, #ffd6e7 0 10px, transparent 10px),
+        radial-gradient(circle at 40px 20px, #ffd6e7 0 10px, transparent 10px),
+        radial-gradient(circle at 30px 8px, #ffd6e7 0 10px, transparent 10px),
+        radial-gradient(circle at 30px 32px, #ffd6e7 0 10px, transparent 10px),
+        radial-gradient(circle at 30px 20px, #fff59d 0 7px, transparent 7px);
+      background-size: 60px 60px;
+    }
+
+    h1 {
+      margin-top: 20px;
+    }
+
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background: #cfefff;
+      border: 2px solid #7ec8e3;
+    }
+
+    .info {
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 5px;
+      border: 1px solid #999;
+      border-radius: 8px;
+      background: white;
+    }
+
+    button:hover {
+      background: #f5f5f5;
+    }
+
+    dialog {
+      border: none;
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 320px;
+      text-align: left;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .dialog-buttons {
+      text-align: right;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Snake Game</h1>
+  <div class="info">Score: <span id="score">0</span></div>
+
+  <button onclick="startGame()">Start / Restart</button>
+  <button id="howToPlayBtn" type="button">How to Play</button>
+
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+  <dialog id="howToPlayDialog">
+    <h2>How to Play</h2>
+    <p>Use the arrow keys or W, A, S, D to move the snake.</p>
+    <p>Eat the blue fruit to grow and earn points.</p>
+    <p>Do not hit the walls or run into your own snake.</p>
+    <div class="dialog-buttons">
+      <button id="closeDialogBtn" type="button">Close</button>
+    </div>
+  </dialog>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const howToPlayBtn = document.getElementById("howToPlayBtn");
+    const howToPlayDialog = document.getElementById("howToPlayDialog");
+    const closeDialogBtn = document.getElementById("closeDialogBtn");
+
+    const box = 20;
+    const canvasSize = 400;
+    let snake = [];
+    let direction = "RIGHT";
+    let food = {};
+    let score = 0;
+    let game;
+
+    function randomFood() {
+      return {
+        x: Math.floor(Math.random() * (canvasSize / box)) * box,
+        y: Math.floor(Math.random() * (canvasSize / box)) * box
+      };
+    }
+
+    function startGame() {
+      snake = [{ x: 200, y: 200 }];
+      direction = "RIGHT";
+      food = randomFood();
+      score = 0;
+      scoreEl.textContent = score;
+
+      clearInterval(game);
+      game = setInterval(draw, 120);
+    }
+
+    document.addEventListener("keydown", changeDirection);
+
+    function changeDirection(event) {
+      const key = event.key;
+
+      if ((key === "ArrowLeft" || key === "a" || key === "A") && direction !== "RIGHT") {
+        direction = "LEFT";
+      } else if ((key === "ArrowUp" || key === "w" || key === "W") && direction !== "DOWN") {
+        direction = "UP";
+      } else if ((key === "ArrowRight" || key === "d" || key === "D") && direction !== "LEFT") {
+        direction = "RIGHT";
+      } else if ((key === "ArrowDown" || key === "s" || key === "S") && direction !== "UP") {
+        direction = "DOWN";
+      }
+    }
+
+    function drawGrid() {
+      ctx.strokeStyle = "#9dd9f3";
+      ctx.lineWidth = 1;
+
+      for (let x = 0; x < canvasSize; x += box) {
+        for (let y = 0; y < canvasSize; y += box) {
+          ctx.strokeRect(x, y, box, box);
+        }
+      }
+    }
+
+    function draw() {
+      ctx.fillStyle = "#cfefff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      drawGrid();
+
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = "pink";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+
+        ctx.strokeStyle = "#ff69b4";
+        ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      ctx.fillStyle = "blue";
+      ctx.fillRect(food.x, food.y, box, box);
+
+      let snakeX = snake[0].x;
+      let snakeY = snake[0].y;
+
+      if (direction === "LEFT") snakeX -= box;
+      if (direction === "UP") snakeY -= box;
+      if (direction === "RIGHT") snakeX += box;
+      if (direction === "DOWN") snakeY += box;
+
+      if (snakeX === food.x && snakeY === food.y) {
+        score++;
+        scoreEl.textContent = score;
+        food = randomFood();
+      } else {
+        snake.pop();
+      }
+
+      const newHead = {
+        x: snakeX,
+        y: snakeY
+      };
+
+      if (
+        snakeX < 0 ||
+        snakeY < 0 ||
+        snakeX >= canvasSize ||
+        snakeY >= canvasSize ||
+        collision(newHead, snake)
+      ) {
+        clearInterval(game);
+        alert("Game Over! Your score was " + score);
+        return;
+      }
+
+      snake.unshift(newHead);
+    }
+
+    function collision(head, array) {
+      for (let i = 0; i < array.length; i++) {
+        if (head.x === array[i].x && head.y === array[i].y) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    howToPlayBtn.addEventListener("click", () => {
+      howToPlayDialog.showModal();
+    });
+
+    closeDialogBtn.addEventListener("click", () => {
+      howToPlayDialog.close();
+    });
+  </script>
+</body>
+</html>
